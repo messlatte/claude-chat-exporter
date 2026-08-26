@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Builds
+build/
+dist/
+*.spec
+!Claude-Chat-Exporter.spec
+*.log
+.claude-export-*.tmp
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+settings.json
+
+# Claude exports and generated ChatGPT exports — never commit these
+**/*.json
+**/*.zip
+**/conversations*.json
+**/users*.json
+**/login_history*.json
+**/memories*.json
+**/design_chats/
+**/projects/
+**/claude-data/
+**/claude_data/
+**/ChatGPT Exporte/
+**/ChatGPT Exports/
+exports/
+tmp*/

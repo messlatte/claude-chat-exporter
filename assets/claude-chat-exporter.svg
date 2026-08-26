@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Claude Chat Exporter">
+  <defs>
+    <linearGradient id="bg" x1="28" y1="20" x2="226" y2="238" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#25221F"/>
+      <stop offset="1" stop-color="#151513"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="73" y1="121" x2="192" y2="121" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D99762"/>
+      <stop offset="1" stop-color="#71C49A"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#bg)"/>
+  <path d="M58 64h93c18 0 33 15 33 33v28c0 18-15 33-33 33h-36l-30 25v-25H58c-18 0-33-15-33-33V97c0-18 15-33 33-33Z" fill="#F4EFE8"/>
+  <path d="M110 99h67l-17-17 12-12 38 38-38 38-12-12 17-17h-67V99Z" fill="url(#arrow)"/>
+  <circle cx="61" cy="110" r="8" fill="#D99762"/>
+  <circle cx="86" cy="110" r="8" fill="#D99762" opacity=".72"/>
+  <path d="M154 160h44c18 0 33 15 33 33v2c0 18-15 33-33 33h-56l-24 18v-22c-10-6-17-17-17-29v-2c0-18 15-33 33-33h20Z" fill="#71C49A"/>
+</svg>
