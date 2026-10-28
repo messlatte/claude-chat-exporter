@@ -15,7 +15,7 @@ pefile==2023.2.7
 pyinstaller==6.16.0
 pyinstaller-hooks-contrib==2026.6
 pywin32-ctypes==0.2.3
-setuptools==84.0.0
+setuptools==84.2.1
 
 # Icon generation
 Pillow==11.3.0
