@@ -93,10 +93,6 @@ class ConversationStore:
                 continue
             if active_filters.get("exclude_empty") and summary["is_empty"]:
                 continue
-            if active_filters.get("branches") and summary["branch_count"] < 2:
-                continue
-            if active_filters.get("large") and summary["char_count"] < 400_000:
-                continue
             selected.append(dict(summary))
 
         if sort == "created_asc":
