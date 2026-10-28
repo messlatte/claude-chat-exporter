@@ -249,6 +249,8 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
     if not messages:
         return ConversationGraph(paths=(), warnings=())
 
+    # Design chats have no parent links and are one linear path
+    # (test_design_chats_are_discovered_and_renderable).
     if all("parent_message_uuid" not in message for message in messages):
         children = tuple(
             (index + 1,) if index + 1 < len(messages) else ()
@@ -269,6 +271,9 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
         value = message.get("uuid")
         if isinstance(value, str) and value:
             positions[value].append(index)
+    # Duplicate message UUIDs, e.g. a message copied in a hand-edited export:
+    # a child links to the nearest earlier copy
+    # (test_duplicate_message_uuid_links_to_nearest_earlier_copy).
     duplicates = [uuid for uuid, indexes in positions.items() if len(indexes) > 1]
     if duplicates:
         warnings.append(
@@ -289,11 +294,18 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
         if previous:
             parents[index] = previous[-1]
         elif non_self:
+            # Parent stored after its child, as in a hand-edited or re-sorted
+            # export (test_forward_parent_reference_is_resolved_independent_of_array_order).
             parents[index] = non_self[0]
             forward_references += 1
         elif index in candidates:
+            # A message that names itself as parent in a hand-edited export;
+            # the cycle cut below makes it a root
+            # (test_self_parent_becomes_root_and_is_reported_as_cycle).
             parents[index] = index
         else:
+            # Parent missing from the file, as in a truncated export; the
+            # message becomes a root (test_all_root_to_leaf_variants_are_reconstructed).
             unresolved += 1
 
     if unresolved:
@@ -301,6 +313,10 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
     if forward_references:
         warnings.append(f"{forward_references} Parent-Bezug/Bezüge zeigen auf spätere Array-Einträge; sie wurden anhand der UUID rekonstruiert.")
 
+    # Messages that are each other's ancestors, possible only in a hand-edited
+    # export: each cycle is cut at its last message in array order, without
+    # recursion (test_parent_cycle_is_cut_without_recursion). Afterwards every
+    # chain ends in a root, so roots is never empty below.
     completed: set[int] = set()
     cycle_count = 0
     for start in range(len(messages)):
@@ -330,6 +346,8 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
     roots = [index for index, parent in enumerate(parents) if parent is None]
     roots.sort(key=lambda root: (_date_key(_string(messages[root].get("created_at"))), root))
 
+    # One path per leaf. Above MAX_BRANCH_PATHS only the tree is kept
+    # (test_compact_markdown_keeps_tree_when_path_list_is_not_materialized).
     path_count = sum(1 for values in child_lists if not values)
     truncated = path_count > MAX_BRANCH_PATHS
     paths: list[tuple[int, ...]] = []
@@ -351,17 +369,8 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
                     for child in reversed(node_children):
                         stack.append((child, current))
 
-    if not roots:
-        roots = list(range(len(messages)))
-        warnings.append("Der Parent-Graph konnte nicht rekonstruiert werden; die Originalreihenfolge wird verwendet.")
-    unique_paths: list[tuple[int, ...]] = []
-    seen_paths: set[tuple[int, ...]] = set()
-    for path_value in paths:
-        if path_value and path_value not in seen_paths:
-            seen_paths.add(path_value)
-            unique_paths.append(path_value)
     return ConversationGraph(
-        paths=tuple(unique_paths),
+        paths=tuple(paths),
         warnings=tuple(warnings),
         truncated=truncated,
         path_count=path_count,
@@ -879,12 +888,10 @@ def _is_visible_text_block(value: Any) -> bool:
 
 
 def _messages(conversation: dict[str, Any]) -> list[dict[str, Any]]:
-    value = conversation.get("chat_messages")
-    if not isinstance(value, list):
-        value = conversation.get("messages")
-    if not isinstance(value, list):
-        return []
-    return [message for message in value if isinstance(message, dict)]
+    # _validate_conversations has checked that the list exists and holds dicts.
+    if "chat_messages" in conversation:
+        return conversation["chat_messages"]
+    return conversation["messages"]
 
 
 def _conversation_uuid(conversation: dict[str, Any], index: int) -> str:

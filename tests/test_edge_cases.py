@@ -68,6 +68,26 @@ class GraphHardeningTests(unittest.TestCase):
         self.assertEqual(set(graph.paths[0]), {0, 1})
         self.assertTrue(any("zyklische" in warning for warning in graph.warnings))
 
+    def test_duplicate_message_uuid_links_to_nearest_earlier_copy(self) -> None:
+        conversation = _conversation(
+            [
+                _message("dup", text="Erste Kopie"),
+                _message("dup", text="Zweite Kopie"),
+                _message("child", "dup", text="Antwort"),
+            ]
+        )
+        graph = conversation_graph(conversation)
+        self.assertEqual(graph.children, ((), (2,), ()))
+        self.assertEqual(graph.paths, ((0,), (1, 2)))
+        self.assertTrue(any("mehrfach" in warning for warning in graph.warnings))
+
+    def test_self_parent_becomes_root_and_is_reported_as_cycle(self) -> None:
+        conversation = _conversation([_message("self", "self", text="Selbst")])
+        graph = conversation_graph(conversation)
+        self.assertEqual(graph.roots, (0,))
+        self.assertEqual(graph.paths, ((0,),))
+        self.assertTrue(any("zyklische" in warning for warning in graph.warnings))
+
     def test_compact_markdown_keeps_tree_when_path_list_is_not_materialized(self) -> None:
         root = _message("root", text="Wurzel")
         children = [_message(f"child-{index}", "root", text=str(index)) for index in range(10_001)]
