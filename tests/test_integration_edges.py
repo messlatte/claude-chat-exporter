@@ -168,7 +168,7 @@ class LoaderAndFilenameTests(unittest.TestCase):
         conversation = _conversation()
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as temporary:
             api = DesktopApi(settings_path=Path(temporary) / "settings.json")
-            api.store = ConversationStore([conversation], Path("conversations.json"))
+            api._store = ConversationStore([conversation], Path("conversations.json"))
             with patch("claude_chat_exporter.app.render_conversation", wraps=render_conversation) as renderer:
                 first = api.get_sizes([conversation["uuid"]], "raw_json")
                 second = api.get_sizes([conversation["uuid"]], "raw_json")
@@ -215,16 +215,50 @@ class SourceDialogTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as temporary:
             api = DesktopApi(settings_path=Path(temporary) / "settings.json")
             existing_store = ConversationStore([conversation], Path("conversations.json"))
-            api.store = existing_store
-            api.source_path = Path("conversations.json")
+            api._store = existing_store
+            api._source_path = Path("conversations.json")
             api.bind_window(FakeWindow())
             result = api.choose_source()
 
         self.assertEqual(result, {"ok": False, "cancelled": True})
-        self.assertIs(api.store, existing_store)
+        self.assertIs(api._store, existing_store)
         self.assertEqual(captured["dialog_type"], webview.FileDialog.OPEN)
         self.assertFalse(captured["allow_multiple"])
         self.assertEqual(captured["file_types"], SOURCE_FILE_TYPES)
+
+
+def _is_plain(value: object) -> bool:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return True
+    if isinstance(value, list):
+        return all(_is_plain(item) for item in value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and _is_plain(item) for key, item in value.items())
+    return False
+
+
+class JsApiSurfaceTests(unittest.TestCase):
+    def test_public_attributes_are_plain_values(self) -> None:
+        # pywebview walks the public attributes of js_api from a background
+        # thread and recurses into objects; walking the window hung startup.
+        class FakeWindow:
+            native = object()
+
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as temporary:
+            source = Path(temporary) / "conversations.json"
+            source.write_text(json.dumps([_conversation()]), encoding="utf-8")
+            api = DesktopApi(settings_path=Path(temporary) / "settings.json", startup_source=source)
+            api.bind_window(FakeWindow())
+            before_load = {name: getattr(api, name) for name in dir(api) if not name.startswith("_")}
+            self.assertTrue(api.initialize()["loaded"])
+            after_load = {name: getattr(api, name) for name in dir(api) if not name.startswith("_")}
+
+        for attributes in (before_load, after_load):
+            for name, value in attributes.items():
+                if callable(value):
+                    continue
+                with self.subTest(attribute=name):
+                    self.assertTrue(_is_plain(value), f"DesktopApi.{name} is a {type(value).__name__}")
 
 
 class SideEffectSafetyTests(unittest.TestCase):
@@ -243,9 +277,9 @@ class SideEffectSafetyTests(unittest.TestCase):
         conversation = _conversation()
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as temporary:
             api = DesktopApi(settings_path=Path(temporary) / "settings.json")
-            api.store = ConversationStore([conversation], Path("conversations.json"))
+            api._store = ConversationStore([conversation], Path("conversations.json"))
             with patch("claude_chat_exporter.app._copy_to_clipboard") as clipboard:
-                with patch.object(api.settings, "save", side_effect=OSError("read only")):
+                with patch.object(api._settings, "save", side_effect=OSError("read only")):
                     result = api.copy_selected(conversation["uuid"])
         clipboard.assert_called_once()
         self.assertTrue(result["ok"])
