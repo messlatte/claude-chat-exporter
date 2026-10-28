@@ -10,13 +10,13 @@ Windows-App, die einzelne Chats aus einem Claude-Datenexport herauslöst, etwa u
 
 Unter [Releases](https://github.com/messlatte/claude-chat-exporter/releases/latest) gibt es die EXE, die ohne Installation läuft, und ein ZIP mit derselben EXE und allen Lizenzhinweisen. Die App braucht die Microsoft Edge WebView2 Runtime, die auf aktuellen Windows-Systemen meist schon installiert ist.
 
-Die EXE ist nicht signiert, deshalb zeigt Windows SmartScreen „Unbekannter Herausgeber“. Die Prüfsummen stehen in `SHA256SUMS.txt`.
+Die EXE ist nicht signiert, deshalb zeigt Windows SmartScreen „Unbekannter Herausgeber“. Starten lässt sie sich über „Weitere Informationen“ und dann „Trotzdem ausführen“. Die Prüfsummen stehen in `SHA256SUMS.txt`.
 
 ## Bedienung
 
 1. Bei Claude einen Datenexport anfordern und entpacken.
 2. Die EXE starten und die `conversations.json` auswählen. Liegt sie neben der EXE, findet die App sie selbst.
-3. Einen Chat anklicken, um die Vorschau zu sehen. Mit dem Haken wählt man Chats für den Export aus.
+3. Einen Chat anklicken, um die Vorschau zu sehen. Über das Kästchen auf der Chatkarte die Chats für den Export markieren.
 4. „Für ChatGPT kopieren“ kopiert den offenen Chat, „Exportieren“ speichert alle markierten Chats als einzelne Dateien.
 
 ## Formate
@@ -25,11 +25,11 @@ Die EXE ist nicht signiert, deshalb zeigt Windows SmartScreen „Unbekannter Her
 - **Vollständiges Markdown:** zusätzlich alle Metadaten und technischen Blöcke.
 - **Original-JSON:** das unveränderte Chat-Objekt.
 
-Die beiden vollständigen Formate können interne Prompts und Tool-Daten enthalten, also vor dem Weitergeben prüfen. Bei verzweigten Gesprächen steht die gemeinsame Vorgeschichte nur einmal im Export. Vorhandene Dateien überschreibt die App nicht.
+Vollständiges Markdown und Original-JSON können interne Prompts und Tool-Daten enthalten, deshalb diese Dateien vor dem Weitergeben durchsehen. Bei verzweigten Gesprächen steht die gemeinsame Vorgeschichte nur einmal im Export. Gibt es den Dateinamen schon, speichert die App die neue Datei mit „(2)“ im Namen.
 
 ## Datenschutz
 
-Die App liest nur die gewählte Datei und, falls vorhanden, den Ordner `design_chats` daneben. Sie merkt sich den letzten Quellpfad, den Ausgabeordner und das Format, sonst nichts. Bitte keine echten Exporte oder Chatinhalte in Issues hochladen.
+Die App liest nur die gewählte Datei und, falls vorhanden, den Ordner `design_chats` daneben. Sie speichert nur den letzten Quellpfad, den Ausgabeordner und das Format in `%APPDATA%\ClaudeChatExporter\settings.json`. Bitte keine echten Exporte oder Chatinhalte in Issues hochladen.
 
 ## Aus dem Quellcode
 
@@ -41,7 +41,7 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe run_claude_chat_exporter.py
 ```
 
-Tests laufen mit `.\.venv\Scripts\python.exe -m unittest discover -s tests`, die EXE baut `.\build_windows.ps1` nach `dist\Claude-Chat-Exporter.exe`.
+Tests laufen mit `.\.venv\Scripts\python.exe -m unittest discover -s tests`, und `.\build_windows.ps1` baut die EXE nach `dist\Claude-Chat-Exporter.exe`.
 
 ## Lizenz
 

@@ -9,6 +9,4 @@ Erste öffentliche Version.
 - Formate ChatGPT-Markdown, vollständiges Markdown und Original-JSON
 - Verzweigte Gespräche ohne doppelte Vorgeschichte
 - Exporte werden atomar geschrieben und überschreiben keine vorhandenen Dateien
-- Einzelne Windows-EXE mit Icon und Versionsinfo
-
-Behoben vor der Veröffentlichung: Dateifilter beim Wechsel des Exports, und ein Klick auf eine Chatkarte markiert den Chat nicht mehr automatisch für den Export.
+- Einzelne Windows-EXE, die ohne Installation läuft
