@@ -4,14 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from claude_chat_exporter.core import load_conversations, render_conversation
-
-
-def _messages(conversation: dict) -> list[dict]:
-    value = conversation.get("chat_messages")
-    if not isinstance(value, list):
-        value = conversation.get("messages")
-    return [message for message in value if isinstance(message, dict)] if isinstance(value, list) else []
+from claude_chat_exporter.core import _messages, load_conversations, render_conversation
 
 
 def validate(source: Path) -> dict[str, int]:
