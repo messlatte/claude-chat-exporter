@@ -187,7 +187,7 @@ class SourceDialogTests(unittest.TestCase):
         self.assertIn("LICENSE", result["text"])
         self.assertIn("THIRD_PARTY_NOTICES.md", result["text"])
         self.assertIn("PyInstaller", result["text"])
-        self.assertIn("zlib 1.3.1", result["text"])
+        self.assertIn("zlib 1.3.2", result["text"])
 
     def test_source_file_filters_match_pinned_pywebview_syntax(self) -> None:
         from webview.util import parse_file_type

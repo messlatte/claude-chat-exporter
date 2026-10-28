@@ -1,0 +1,2 @@
+# Direct runtime dependency; pip resolves its transitive packages
+pywebview==6.2.1

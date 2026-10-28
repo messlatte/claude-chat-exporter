@@ -120,7 +120,7 @@ window.pywebview = {{ api: {{
   get_legal_notices: async () => ({{
     ok: true,
     file_count: 3,
-    text: "LICENSE\\nMIT License\\n\\nTHIRD_PARTY_NOTICES.md\\nDrittanbieter-Hinweise\\n\\nzlib-1.3.1.txt\\nzlib License"
+    text: "LICENSE\\nMIT License\\n\\nTHIRD_PARTY_NOTICES.md\\nDrittanbieter-Hinweise\\n\\nzlib-1.3.2.txt\\nzlib License"
   }})
 }} }};
 </script>
