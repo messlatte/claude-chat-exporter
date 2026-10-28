@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import tempfile
 import unittest
 
 from claude_chat_exporter.core import (

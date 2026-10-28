@@ -5,16 +5,14 @@ from dataclasses import dataclass
 from datetime import datetime
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import re
 import tempfile
 import unicodedata
-from typing import Any, Iterable, Iterator, Literal, Sequence
+from typing import Any, Iterator, Sequence
 
 
-ExportFormat = Literal["chatgpt_markdown", "complete_markdown", "raw_json"]
 VALID_FORMATS: set[str] = {"chatgpt_markdown", "complete_markdown", "raw_json"}
 MAX_BRANCH_PATHS = 10_000
 

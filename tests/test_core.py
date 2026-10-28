@@ -6,7 +6,6 @@ import tempfile
 import unittest
 
 from claude_chat_exporter.core import (
-    ConversationStore,
     conversation_graph,
     load_conversations,
     render_conversation,
