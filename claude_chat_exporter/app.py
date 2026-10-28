@@ -83,34 +83,38 @@ class DesktopApi:
         settings_path: Path | None = None,
         startup_source: Path | None = None,
     ) -> None:
-        self.settings = SettingsStore(settings_path)
-        self.startup_source = startup_source
-        self.store: ConversationStore | None = None
-        self.source_path: Path | None = None
-        self.window: Any = None
+        # All state stays private. pywebview builds the JavaScript API by
+        # walking the public attributes of js_api from a background thread:
+        # walking the window reaches the WinForms form and can hang startup,
+        # and walking a Path would expose methods such as unlink to the page.
+        self._settings = SettingsStore(settings_path)
+        self._startup_source = startup_source
+        self._store: ConversationStore | None = None
+        self._source_path: Path | None = None
+        self._window: Any = None
         self._lock = threading.RLock()
         self._size_cache: dict[tuple[str, str], tuple[int, int]] = {}
         self._legal_notices_cache: str | None = None
         self._legal_notices_file_count = 0
 
     def bind_window(self, window: Any) -> None:
-        self.window = window
+        self._window = window
 
     def initialize(self) -> dict[str, Any]:
         with self._lock:
-            if self.store is None:
+            if self._store is None:
                 self._try_automatic_source()
             return self._state()
 
     def choose_source(self) -> dict[str, Any]:
         try:
-            if self.window is None:
+            if self._window is None:
                 return self._error("Das Dateifenster ist noch nicht bereit.")
             import webview
 
-            previous = self.settings.values.get("last_source", "")
+            previous = self._settings.values.get("last_source", "")
             directory = str(Path(previous).parent) if previous else ""
-            selected = self.window.create_file_dialog(
+            selected = self._window.create_file_dialog(
                 webview.FileDialog.OPEN,
                 directory=directory,
                 allow_multiple=False,
@@ -127,12 +131,12 @@ class DesktopApi:
 
     def choose_export_folder(self) -> dict[str, Any]:
         try:
-            if self.window is None:
+            if self._window is None:
                 return self._error("Das Ordnerfenster ist noch nicht bereit.")
             import webview
 
             current = self._export_folder(create=False)
-            selected = self.window.create_file_dialog(
+            selected = self._window.create_file_dialog(
                 webview.FileDialog.FOLDER,
                 directory=str(current.parent if current and not current.exists() else current or ""),
                 allow_multiple=False,
@@ -140,8 +144,8 @@ class DesktopApi:
             if not selected:
                 return {"ok": False, "cancelled": True}
             folder = Path(selected[0]).resolve()
-            self.settings.values["export_folder"] = str(folder)
-            self.settings.save()
+            self._settings.values["export_folder"] = str(folder)
+            self._settings.save()
             return {"ok": True, "folder": str(folder)}
         except Exception as exc:
             return self._error(_friendly_exception(exc))
@@ -153,9 +157,9 @@ class DesktopApi:
         sort: str = "updated_desc",
     ) -> list[dict[str, Any]]:
         with self._lock:
-            if self.store is None:
+            if self._store is None:
                 return []
-            return self.store.summaries(query=query or "", filters=filters or {}, sort=sort)
+            return self._store.summaries(query=query or "", filters=filters or {}, sort=sort)
 
     def get_preview(self, uuid: str, format: str = "chatgpt_markdown") -> dict[str, Any]:
         try:
@@ -229,9 +233,9 @@ class DesktopApi:
                 conversations = [self._conversation(value) for value in dict.fromkeys(uuids)]
                 folder = self._export_folder(create=True)
                 files = write_exports(conversations, selected_format, folder)
-                self.settings.values["last_format"] = selected_format
+                self._settings.values["last_format"] = selected_format
                 try:
-                    self.settings.save()
+                    self._settings.save()
                 except OSError:
                     warnings.append("Die Dateien wurden exportiert; nur die letzte Formatauswahl konnte nicht gespeichert werden.")
             if selected_format == "complete_markdown":
@@ -256,9 +260,9 @@ class DesktopApi:
                 warnings = _format_warnings(conversation, selected_format, len(text))
             _copy_to_clipboard(text)
             with self._lock:
-                self.settings.values["last_format"] = selected_format
+                self._settings.values["last_format"] = selected_format
                 try:
-                    self.settings.save()
+                    self._settings.save()
                 except OSError:
                     warnings.append("Der Chat wurde kopiert; nur die letzte Formatauswahl konnte nicht gespeichert werden.")
             return {
@@ -325,15 +329,15 @@ class DesktopApi:
 
     def _try_automatic_source(self) -> None:
         candidates: list[Path] = []
-        if self.startup_source:
-            candidates.append(self.startup_source)
+        if self._startup_source:
+            candidates.append(self._startup_source)
         candidates.extend(
             [
                 Path(sys.argv[0]).resolve().parent / "conversations.json",
                 Path.cwd() / "conversations.json",
             ]
         )
-        recent = self.settings.values.get("last_source", "")
+        recent = self._settings.values.get("last_source", "")
         if recent:
             candidates.append(Path(recent))
 
@@ -353,40 +357,40 @@ class DesktopApi:
     def _load_source(self, path: Path) -> None:
         path = path.expanduser().resolve()
         store = load_conversations(path)
-        self.store = store
-        self.source_path = path
+        self._store = store
+        self._source_path = path
         self._size_cache.clear()
-        self.settings.values["last_source"] = str(path)
-        if not self.settings.values.get("export_folder"):
-            self.settings.values["export_folder"] = str(path.parent / "ChatGPT Exporte")
-        self.settings.save()
+        self._settings.values["last_source"] = str(path)
+        if not self._settings.values.get("export_folder"):
+            self._settings.values["export_folder"] = str(path.parent / "ChatGPT Exporte")
+        self._settings.save()
 
     def _state(self) -> dict[str, Any]:
-        loaded = self.store is not None and self.source_path is not None
+        loaded = self._store is not None and self._source_path is not None
         return {
             "ok": True,
             "loaded": loaded,
-            "source_name": self.source_path.name if self.source_path else "",
-            "source_path": str(self.source_path) if self.source_path else "",
+            "source_name": self._source_path.name if self._source_path else "",
+            "source_path": str(self._source_path) if self._source_path else "",
             "export_folder": str(self._export_folder(create=False)) if loaded else "",
-            "conversations": self.store.summaries(sort="updated_desc") if self.store else [],
-            "warnings": list(self.store.load_warnings) if self.store else [],
+            "conversations": self._store.summaries(sort="updated_desc") if self._store else [],
+            "warnings": list(self._store.load_warnings) if self._store else [],
             "settings": {
-                "last_format": self.settings.values.get("last_format", "chatgpt_markdown"),
+                "last_format": self._settings.values.get("last_format", "chatgpt_markdown"),
             },
         }
 
     def _conversation(self, uuid: str) -> dict[str, Any]:
-        if self.store is None:
+        if self._store is None:
             raise ValueError("Bitte zuerst eine conversations.json auswählen.")
-        return self.store.get(uuid)
+        return self._store.get(uuid)
 
     def _export_folder(self, *, create: bool) -> Path:
-        configured = self.settings.values.get("export_folder", "")
+        configured = self._settings.values.get("export_folder", "")
         if configured:
             folder = Path(configured).expanduser()
-        elif self.source_path:
-            folder = self.source_path.parent / "ChatGPT Exporte"
+        elif self._source_path:
+            folder = self._source_path.parent / "ChatGPT Exporte"
         else:
             folder = Path.home() / "Downloads" / "ChatGPT Exporte"
         folder = folder.resolve()
