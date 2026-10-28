@@ -13,13 +13,19 @@ import threading
 import time
 from typing import Any
 
-from .core import ConversationStore, load_conversations, render_conversation, technical_block_count, write_exports
+from .core import (
+    VALID_FORMATS,
+    ConversationStore,
+    load_conversations,
+    render_conversation,
+    technical_block_count,
+    write_exports,
+)
 from .ui import load_html
 
 
 APP_NAME = "Claude Chat Exporter"
 APP_FOLDER = "ClaudeChatExporter"
-FORMATS = {"chatgpt_markdown", "complete_markdown", "raw_json"}
 PREVIEW_LIMIT = 160_000
 SOURCE_FILE_TYPES = (
     "Claude JSON (*.json)",
@@ -404,7 +410,7 @@ class DesktopApi:
 
 
 def _valid_format(value: str) -> str:
-    if value not in FORMATS:
+    if value not in VALID_FORMATS:
         raise ValueError("Unbekanntes Exportformat.")
     return value
 
