@@ -87,14 +87,17 @@ class DesktopApi:
         self.startup_source = startup_source
         self.store: ConversationStore | None = None
         self.source_path: Path | None = None
-        self.window: Any = None
+        # Must stay private: pywebview walks the public attributes of js_api
+        # from a background thread, and walking the window object reaches the
+        # WinForms form and can hang the app at startup.
+        self._window: Any = None
         self._lock = threading.RLock()
         self._size_cache: dict[tuple[str, str], tuple[int, int]] = {}
         self._legal_notices_cache: str | None = None
         self._legal_notices_file_count = 0
 
     def bind_window(self, window: Any) -> None:
-        self.window = window
+        self._window = window
 
     def initialize(self) -> dict[str, Any]:
         with self._lock:
@@ -104,13 +107,13 @@ class DesktopApi:
 
     def choose_source(self) -> dict[str, Any]:
         try:
-            if self.window is None:
+            if self._window is None:
                 return self._error("Das Dateifenster ist noch nicht bereit.")
             import webview
 
             previous = self.settings.values.get("last_source", "")
             directory = str(Path(previous).parent) if previous else ""
-            selected = self.window.create_file_dialog(
+            selected = self._window.create_file_dialog(
                 webview.FileDialog.OPEN,
                 directory=directory,
                 allow_multiple=False,
@@ -127,12 +130,12 @@ class DesktopApi:
 
     def choose_export_folder(self) -> dict[str, Any]:
         try:
-            if self.window is None:
+            if self._window is None:
                 return self._error("Das Ordnerfenster ist noch nicht bereit.")
             import webview
 
             current = self._export_folder(create=False)
-            selected = self.window.create_file_dialog(
+            selected = self._window.create_file_dialog(
                 webview.FileDialog.FOLDER,
                 directory=str(current.parent if current and not current.exists() else current or ""),
                 allow_multiple=False,
