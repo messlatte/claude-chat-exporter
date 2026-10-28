@@ -14,7 +14,7 @@ import time
 from typing import Any
 
 from .core import ConversationStore, load_conversations, render_conversation, technical_block_count, write_exports
-from .ui import HTML
+from .ui import load_html
 
 
 APP_NAME = "Claude Chat Exporter"
@@ -527,7 +527,7 @@ def main() -> None:
     api = DesktopApi(startup_source=_startup_source())
     window = webview.create_window(
         APP_NAME,
-        html=HTML,
+        html=load_html(),
         js_api=api,
         width=1280,
         height=820,

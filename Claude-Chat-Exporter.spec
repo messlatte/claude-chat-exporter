@@ -11,6 +11,7 @@ version_path = project_root / "assets" / "version_info.txt"
 license_path = project_root / "LICENSE"
 notices_path = project_root / "THIRD_PARTY_NOTICES.md"
 third_party_path = project_root / "third_party_licenses"
+web_path = project_root / "claude_chat_exporter" / "web"
 
 for required_file in (license_path, notices_path):
     if not required_file.is_file() or required_file.stat().st_size == 0:
@@ -26,6 +27,7 @@ analysis = Analysis(
         (str(license_path), "."),
         (str(notices_path), "."),
         (str(third_party_path), "third_party_licenses"),
+        (str(web_path), "claude_chat_exporter/web"),
     ],
     hiddenimports=["webview.platforms.edgechromium"],
     hookspath=[],
