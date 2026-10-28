@@ -786,22 +786,17 @@ def _atomic_write_text(path: Path, content: str) -> None:
             temporary.write(content)
             temporary.flush()
             os.fsync(temporary.fileno())
-        if os.name == "nt":
-            # Windows rename is atomic within the directory and refuses to
-            # replace an existing destination. It also works on FAT/exFAT.
-            os.rename(temporary_name, path)
-            temporary_name = ""
-        else:
-            # Hard-linking is the portable no-replace commit on Unix/macOS.
-            # Both names refer to the already fsynced, complete file.
-            os.link(temporary_name, path)
+        # Windows rename is atomic within the directory and refuses to
+        # replace an existing destination. It also works on FAT/exFAT.
+        os.rename(temporary_name, path)
+        temporary_name = ""
     finally:
         if temporary_name:
             try:
                 os.unlink(temporary_name)
             except OSError:
-                # The export is already complete; a leftover hidden temp file
-                # must not turn it into a failure.
+                # Only reached after a failed write or rename; that error
+                # propagates, a leftover hidden temp file must not replace it.
                 pass
 
 

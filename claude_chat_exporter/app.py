@@ -5,9 +5,6 @@ from ctypes import wintypes
 import json
 import os
 from pathlib import Path
-import platform
-import shutil
-import subprocess
 import sys
 import threading
 import time
@@ -44,13 +41,7 @@ def _resource_root() -> Path:
 
 
 def _settings_path() -> Path:
-    system = platform.system()
-    if system == "Windows":
-        root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif system == "Darwin":
-        root = Path.home() / "Library" / "Application Support"
-    else:
-        root = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
     return root / APP_FOLDER / "settings.json"
 
 
@@ -287,13 +278,7 @@ class DesktopApi:
     def reveal_export_folder(self) -> dict[str, Any]:
         try:
             folder = self._export_folder(create=True)
-            system = platform.system()
-            if system == "Windows":
-                os.startfile(str(folder))  # type: ignore[attr-defined]
-            elif system == "Darwin":
-                subprocess.Popen(["open", str(folder)])
-            else:
-                subprocess.Popen(["xdg-open", str(folder)])
+            os.startfile(str(folder))  # type: ignore[attr-defined]
             return {"ok": True}
         except Exception as exc:
             return self._error(_friendly_exception(exc))
@@ -449,22 +434,7 @@ def _copy_to_clipboard(text: str) -> None:
         raise ValueError(
             "Dieser Chat enthält ein eingebettetes Nullzeichen. Nutze den Datei-Export, damit der Inhalt nicht abgeschnitten wird."
         )
-    system = platform.system()
-    if system == "Windows":
-        _copy_windows(text)
-        return
-    if system == "Darwin":
-        subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
-        return
-    command = shutil.which("wl-copy")
-    if command:
-        subprocess.run([command], input=text.encode("utf-8"), check=True)
-        return
-    command = shutil.which("xclip")
-    if command:
-        subprocess.run([command, "-selection", "clipboard"], input=text.encode("utf-8"), check=True)
-        return
-    raise RuntimeError("Keine unterstützte Zwischenablage gefunden.")
+    _copy_windows(text)
 
 
 def _copy_windows(text: str) -> None:
@@ -542,8 +512,7 @@ def main() -> None:
         shadow=True,
     )
     api.bind_window(window)
-    gui = "edgechromium" if platform.system() == "Windows" else None
-    webview.start(gui=gui, debug=False, private_mode=True)
+    webview.start(gui="edgechromium", debug=False, private_mode=True)
 
 
 if __name__ == "__main__":
