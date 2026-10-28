@@ -16,6 +16,7 @@ from typing import Any
 from .core import (
     VALID_FORMATS,
     ConversationStore,
+    estimate_tokens,
     load_conversations,
     render_conversation,
     technical_block_count,
@@ -27,6 +28,8 @@ from .ui import load_html
 APP_NAME = "Claude Chat Exporter"
 APP_FOLDER = "ClaudeChatExporter"
 PREVIEW_LIMIT = 160_000
+# Above this size the app suggests uploading the export instead of pasting it.
+LARGE_CHAT_CHARS = 400_000
 SOURCE_FILE_TYPES = (
     "Claude JSON (*.json)",
     "JSON Dateien (*.json)",
@@ -174,7 +177,7 @@ class DesktopApi:
                 conversation = self._conversation(uuid)
                 text = render_conversation(conversation, selected_format)
                 total = len(text)
-                estimated_tokens = _estimate_tokens(total)
+                estimated_tokens = estimate_tokens(total)
                 self._size_cache[(uuid, selected_format)] = (total, estimated_tokens)
             truncated = total > PREVIEW_LIMIT
             preview = text[:PREVIEW_LIMIT]
@@ -215,7 +218,7 @@ class DesktopApi:
                     if size is None:
                         conversation = self._conversation(uuid)
                         characters = len(render_conversation(conversation, selected_format))
-                        size = (characters, _estimate_tokens(characters))
+                        size = (characters, estimate_tokens(characters))
                         self._size_cache[cache_key] = size
                     total_chars += size[0]
                     total_tokens += size[1]
@@ -274,7 +277,7 @@ class DesktopApi:
             return {
                 "ok": True,
                 "chars": len(text),
-                "estimated_tokens": _estimate_tokens(len(text)),
+                "estimated_tokens": estimate_tokens(len(text)),
                 "warnings": warnings,
             }
         except Exception as exc:
@@ -415,13 +418,9 @@ def _valid_format(value: str) -> str:
     return value
 
 
-def _estimate_tokens(characters: int) -> int:
-    return max(0, round(characters / 3.8))
-
-
 def _format_warnings(conversation: dict[str, Any], selected_format: str, characters: int) -> list[str]:
     warnings: list[str] = []
-    if characters > 400_000:
+    if characters > LARGE_CHAT_CHARS:
         warnings.append("Sehr großer Chat: Als Datei in ChatGPT hochladen statt über die Zwischenablage einfügen.")
     if selected_format == "complete_markdown":
         warnings.append("Enthält technische Blöcke, interne Prompts und möglicherweise sensible Tool-Daten.")

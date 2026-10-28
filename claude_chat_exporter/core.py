@@ -15,6 +15,8 @@ from typing import Any, Iterator, Sequence
 
 VALID_FORMATS: set[str] = {"chatgpt_markdown", "complete_markdown", "raw_json"}
 MAX_BRANCH_PATHS = 10_000
+# Rough average for the token estimates shown in the app.
+CHARS_PER_TOKEN = 3.8
 
 _INVALID_WINDOWS_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 _WHITESPACE = re.compile(r"\s+")
@@ -410,7 +412,7 @@ def _build_summary(conversation: dict[str, Any], uuid: str) -> dict[str, Any]:
         "file_count": file_count,
         "branch_count": graph.path_count,
         "char_count": char_count,
-        "estimated_tokens": max(0, round(char_count / 3.8)),
+        "estimated_tokens": estimate_tokens(char_count),
         "has_technical": has_technical,
         "is_empty": len(messages) == 0,
     }
@@ -862,6 +864,10 @@ def _iter_technical_types(message: dict[str, Any]) -> Iterator[str]:
                 yield "versteckter_text"
         else:
             yield _string(block.get("type")) or "unbekannt"
+
+
+def estimate_tokens(characters: int) -> int:
+    return max(0, round(characters / CHARS_PER_TOKEN))
 
 
 def technical_block_count(conversation: dict[str, Any]) -> int:
