@@ -437,6 +437,10 @@ def _copy_to_clipboard(text: str) -> None:
     _copy_windows(text)
 
 
+GMEM_MOVEABLE = 0x0002
+CF_UNICODETEXT = 13
+
+
 def _copy_windows(text: str) -> None:
     user32 = ctypes.WinDLL("user32", use_last_error=True)
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -451,7 +455,7 @@ def _copy_windows(text: str) -> None:
     user32.SetClipboardData.restype = wintypes.HANDLE
 
     payload = text.encode("utf-16-le") + b"\x00\x00"
-    handle = kernel32.GlobalAlloc(0x0002, len(payload))
+    handle = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(payload))
     if not handle:
         raise ctypes.WinError(ctypes.get_last_error())
     pointer = kernel32.GlobalLock(handle)
@@ -476,7 +480,7 @@ def _copy_windows(text: str) -> None:
     try:
         if not user32.EmptyClipboard():
             raise ctypes.WinError(ctypes.get_last_error())
-        if not user32.SetClipboardData(13, handle):
+        if not user32.SetClipboardData(CF_UNICODETEXT, handle):
             raise ctypes.WinError(ctypes.get_last_error())
         transferred = True
     finally:
