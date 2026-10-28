@@ -311,7 +311,9 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
     if unresolved:
         warnings.append(f"{unresolved} Parent-Bezug/Bezüge zeigen auf keine vorhandene Nachricht und wurden als Wurzel behandelt.")
     if forward_references:
-        warnings.append(f"{forward_references} Parent-Bezug/Bezüge zeigen auf spätere Array-Einträge; sie wurden anhand der UUID rekonstruiert.")
+        warnings.append(
+            f"{forward_references} Parent-Bezug/Bezüge zeigen auf spätere Array-Einträge; sie wurden anhand der UUID rekonstruiert."
+        )
 
     # Messages that are each other's ancestors, possible only in a hand-edited
     # export: each cycle is cut at its last message in array order, without

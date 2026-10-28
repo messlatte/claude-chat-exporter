@@ -10,6 +10,8 @@ from .core import (
     write_exports,
 )
 
+__version__ = "1.0.1"
+
 __all__ = [
     "ConversationGraph",
     "ConversationStore",
