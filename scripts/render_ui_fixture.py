@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-
-from claude_chat_exporter.ui import HTML
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "build" / "ui-fixture.html"
+
+sys.path.insert(0, str(ROOT))
+from claude_chat_exporter.ui import load_html  # noqa: E402
 
 
 CONVERSATIONS = [
@@ -125,7 +127,7 @@ window.pywebview = {{ api: {{
 }} }};
 </script>
 """
-    rendered = HTML.replace("</head>", bridge + "\n</head>", 1)
+    rendered = load_html().replace("</head>", bridge + "\n</head>", 1)
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(rendered, encoding="utf-8")
 

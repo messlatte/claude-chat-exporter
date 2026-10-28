@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Claude Chat Exporter</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app" class="app" aria-busy="true">
+    <header class="topbar">
+      <div class="brand" aria-label="Claude Chat Exporter">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 4.8h8.5A3.5 3.5 0 0 1 18 8.3v5.2a3.5 3.5 0 0 1-3.5 3.5H10l-4 3v-3.4a3.5 3.5 0 0 1-3-3.5V8.3A3.5 3.5 0 0 1 6.5 4.8Z"/>
+            <path d="M8 9h5.8M8 12.5h3.8"/>
+          </svg>
+        </div>
+        <div>
+          <span class="brand-name">Claude Chat Exporter</span>
+          <span class="brand-version">Desktop</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="legalButton" class="legal-button" type="button" aria-label="Projekt- und Drittanbieter-Lizenzen anzeigen">Lizenzen</button>
+        <button id="privacyBadge" class="privacy-badge" type="button" aria-label="Informationen zum lokalen Datenschutz anzeigen">
+          <span class="privacy-dot" aria-hidden="true"></span>
+          <span>100 % lokal</span>
+        </button>
+        <button id="topSourceButton" class="top-source-button hidden" type="button" aria-label="Anderen Claude-Export öffnen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A2.5 2.5 0 0 1 19 20H5a2.5 2.5 0 0 1-2.5-2.5V8A1.5 1.5 0 0 1 4 6.5Z"/><path d="M3.5 10h18"/></svg>
+          <span>Export wechseln</span>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section id="loadingView" class="loading-view" aria-live="polite">
+        <div class="loading-card">
+          <div class="loading-orbit" aria-hidden="true"></div>
+          <h1 id="loadingTitle" class="loading-title">Claude-Daten werden vorbereitet</h1>
+          <p id="loadingCopy" class="loading-copy">Alles bleibt auf diesem Computer.</p>
+        </div>
+      </section>
+
+      <section id="emptyView" class="empty-view hidden" aria-labelledby="emptyTitle">
+        <div class="empty-card">
+          <div class="empty-visual" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.8h10.7A3.3 3.3 0 0 1 18 8.1v5.2a3.3 3.3 0 0 1-3.3 3.3H10l-5 3.2v-3.7a3.2 3.2 0 0 1-2.3-3V8.1A3.3 3.3 0 0 1 6 4.8Z"/><path d="M8 9.2h5M8 12.3h3.5"/></svg>
+          </div>
+          <h1 id="emptyTitle" class="empty-title">Deine Claude-Chats. Bereit für ChatGPT.</h1>
+          <p id="emptyCopy" class="empty-copy">Wähle die <strong>conversations.json</strong> aus deinem Claude-Datenexport. Danach kannst du jeden Chat sofort kopieren oder als eigene Datei exportieren.</p>
+          <button id="chooseSourceButton" class="primary-button" type="button">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A2.5 2.5 0 0 1 19 20H5a2.5 2.5 0 0 1-2.5-2.5V8A1.5 1.5 0 0 1 4 6.5Z"/><path d="M3.5 10h18"/></svg>
+            <span>Claude-Export auswählen</span>
+          </button>
+          <div class="empty-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z"/><path d="m9 12 2 2 4-5"/></svg>
+            Kein Upload · kein Konto · keine Cloud
+          </div>
+        </div>
+      </section>
+
+      <section id="workspace" class="workspace hidden" aria-label="Claude-Konversationen">
+        <div class="work-grid">
+          <aside class="library" aria-label="Chatbibliothek">
+            <div class="library-head">
+              <div class="source-row">
+                <div class="source-info">
+                  <p class="eyebrow">Datenquelle</p>
+                  <div id="sourceName" class="source-name">conversations.json</div>
+                </div>
+                <button id="changeSourceButton" class="icon-button" type="button" aria-label="Anderen Claude-Export auswählen" title="Export wechseln">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6.5h6l2 2H20a1.5 1.5 0 0 1 1.5 1.5v7.5A2.5 2.5 0 0 1 19 20H5a2.5 2.5 0 0 1-2.5-2.5V8A1.5 1.5 0 0 1 4 6.5Z"/><path d="M3.5 10h18"/></svg>
+                </button>
+              </div>
+              <div class="search-wrap">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                <input id="searchInput" class="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Titel und Inhalt durchsuchen …" aria-label="Chats durchsuchen">
+                <button id="clearSearch" class="clear-search hidden" type="button" aria-label="Suche löschen">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg>
+                </button>
+                <span class="key-hint" aria-hidden="true">Ctrl F</span>
+              </div>
+              <div class="filter-row" aria-label="Chatfilter">
+                <button class="filter-chip" type="button" data-filter="attachments" aria-pressed="false">Anhänge</button>
+                <button class="filter-chip" type="button" data-filter="files" aria-pressed="false">Dateien</button>
+                <button class="filter-chip" type="button" data-filter="technical" aria-pressed="false">Technisch</button>
+                <button class="filter-chip" type="button" data-filter="exclude_empty" aria-pressed="false">Leere aus</button>
+                <select id="sortSelect" class="sort-select" aria-label="Chats sortieren">
+                  <option value="updated_desc">Zuletzt geändert</option>
+                  <option value="created_desc">Neueste zuerst</option>
+                  <option value="created_asc">Älteste zuerst</option>
+                  <option value="title_asc">Titel A–Z</option>
+                  <option value="messages_desc">Meiste Nachrichten</option>
+                </select>
+              </div>
+            </div>
+            <div class="list-toolbar">
+              <label class="select-all-label">
+                <input id="selectAllFiltered" type="checkbox" aria-label="Alle gefilterten Chats auswählen">
+                <span>Alle gefilterten wählen</span>
+              </label>
+              <div class="results-count" aria-live="polite">
+                <span id="searchSpinner" class="mini-spinner hidden" aria-hidden="true"></span>
+                <span id="resultCount">0 Chats</span>
+              </div>
+            </div>
+            <p id="chatListHelp" class="sr-only">Enter öffnet den Chat. Leertaste wählt ihn für den Export. Umschalt plus Leertaste wählt einen Bereich.</p>
+            <div id="chatList" class="chat-list" role="listbox" aria-multiselectable="true" aria-label="Gefundene Chats" aria-describedby="chatListHelp"></div>
+            <div id="loadMoreContainer" class="load-more-wrap"></div>
+          </aside>
+
+          <section class="preview" aria-label="Chatvorschau">
+            <header class="preview-head">
+              <div class="preview-heading">
+                <p class="eyebrow">Vorschau</p>
+                <h2 id="previewTitle" class="preview-title">Chat auswählen</h2>
+                <div id="previewSubtitle" class="preview-subtitle">Die Vorschau entspricht dem gewählten Exportformat.</div>
+              </div>
+              <div id="previewStatus" class="preview-status hidden">
+                <span class="preview-status-dot" aria-hidden="true"></span>
+                <span id="previewStatusText">Vollständige Vorschau</span>
+              </div>
+            </header>
+            <div class="preview-body">
+              <div id="previewEmpty" class="preview-empty">
+                <div class="preview-empty-inner">
+                  <div class="preview-empty-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 3v-3.5A2 2 0 0 1 3 16V6a2 2 0 0 1 2-2Z"/><path d="M8 9h8M8 13h5"/></svg>
+                  </div>
+                  <h2>Wähle links einen Chat</h2>
+                  <p>Ein Klick öffnet die Vorschau. Über das Hakenfeld wählst du Chats für den Export.</p>
+                </div>
+              </div>
+              <div id="previewLoading" class="preview-loading hidden" aria-label="Vorschau wird geladen">
+                <div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div>
+              </div>
+              <div id="previewContent" class="preview-content hidden">
+                <div id="previewTruncated" class="preview-notice hidden">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.6 2.4 17.2A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.8L13.7 3.6a2 2 0 0 0-3.4 0Z"/></svg>
+                  <span id="previewTruncatedText">Diese Vorschau ist gekürzt. Kopie und Export werden gegenüber dem gewählten Format nicht zusätzlich gekürzt.</span>
+                </div>
+                <div id="previewWarnings" class="preview-warnings"></div>
+                <pre id="previewText" class="preview-text"></pre>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <footer class="selection-bar" aria-label="Exportauswahl">
+          <div class="selection-summary">
+            <div id="selectionCount" class="selection-count" aria-hidden="true">0</div>
+            <div class="selection-copy">
+              <p id="selectionLabel" class="selection-label">Noch nichts ausgewählt</p>
+              <div id="selectionMeta" class="selection-meta">Über die Hakenfelder oder „Alle gefilterten wählen“ auswählen</div>
+              <button id="clearSelection" class="clear-selection hidden" type="button">Auswahl aufheben</button>
+            </div>
+          </div>
+
+          <div class="output-options">
+            <select id="formatSelect" class="format-select" aria-label="Exportformat">
+              <option value="chatgpt_markdown">ChatGPT Markdown · empfohlen</option>
+              <option value="complete_markdown">Vollständiges Markdown</option>
+              <option value="raw_json">Original-Rohdaten (JSON)</option>
+            </select>
+            <button id="revealFolderButton" class="icon-button folder-reveal" type="button" aria-label="Ausgabeordner im Explorer öffnen" title="Im Explorer öffnen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></svg>
+            </button>
+            <button id="folderButton" class="folder-button" type="button" aria-label="Ausgabeordner ändern">Ausgabeordner wählen</button>
+          </div>
+
+          <div class="selection-actions">
+            <button id="copyButton" class="secondary-button" type="button" disabled title="Kopiert den aktuell geöffneten Chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+              <span>Für ChatGPT kopieren</span>
+            </button>
+            <button id="exportButton" class="primary-button" type="button" disabled title="Ctrl+E">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+              <span>Exportieren</span>
+            </button>
+          </div>
+        </footer>
+      </section>
+    </main>
+
+    <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+    <div id="modalLayer" class="modal-layer hidden" role="presentation">
+      <section id="modalDialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalBody">
+        <div class="modal-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        </div>
+        <p id="modalEyebrow" class="modal-eyebrow">Hinweis</p>
+        <h2 id="modalTitle" class="modal-title">Bevor du fortfährst</h2>
+        <p id="modalBody" class="modal-body"></p>
+        <ul id="modalFacts" class="modal-facts"></ul>
+        <pre id="modalLegal" class="modal-legal hidden" tabindex="0"></pre>
+        <div class="modal-actions">
+          <button id="modalCancel" class="secondary-button" type="button">Abbrechen</button>
+          <button id="modalConfirm" class="primary-button" type="button">Fortfahren</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
