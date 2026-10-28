@@ -91,7 +91,7 @@ Ich ziehe im März nach Kiel. Was muss ich bis wann erledigen?
 Die wichtigsten Fristen:
 
 - Ummelden: innerhalb von zwei Wochen nach dem Einzug
-- Nachsendeauftrag: etwa eine Woche vor dem Umzug
+- Nachsendeauftrag: spätestens eine Woche vor dem Umzug
 - Internetanschluss: vier bis sechs Wochen vorher bestellen
 <<<CLAUDE_EXPORT_DEMO:END:2>>>
 """
@@ -114,7 +114,7 @@ window.pywebview = {{ api: {{
   }}),
   choose_source: async () => ({{ ok: false, cancelled: true }}),
   search: async () => {conversations},
-  get_preview: async () => ({{ text: {preview}, truncated: false, total_chars: 184220, estimated_tokens: 48479, warnings: [] }}),
+  get_preview: async () => ({{ text: {preview}, truncated: true, total_chars: 184220, estimated_tokens: 48479, warnings: [] }}),
   get_sizes: async (ids) => ({{ ok: true, count: ids.length, total_chars: ids.length * 184220, estimated_tokens: ids.length * 48479 }}),
   export_selected: async (ids) => ({{ ok: true, count: ids.length, folder: "C:/Claude Daten/ChatGPT Exporte", files: [], warnings: [] }}),
   copy_selected: async () => ({{ ok: true, chars: 184220, estimated_tokens: 48479, warnings: [] }}),
