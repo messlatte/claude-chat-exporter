@@ -804,9 +804,8 @@ def _atomic_write_text(path: Path, content: str) -> None:
             try:
                 os.unlink(temporary_name)
             except OSError:
-                # A successful hard-link is already a complete commit. A
-                # cleanup failure may leave only the hidden temporary alias
-                # and must not turn the finished export into an API failure.
+                # The export is already complete; a leftover hidden temp file
+                # must not turn it into a failure.
                 pass
 
 

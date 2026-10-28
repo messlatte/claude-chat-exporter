@@ -49,9 +49,8 @@ analysis = Analysis(
     optimize=0,
 )
 
-# Windows 10/11 provide the Universal CRT and API-set forwarders. Filtering
-# them keeps the result independent of unrelated SDK/JDK folders on PATH and
-# avoids redistributing system DLLs from an accidental third-party source.
+# Windows 10/11 ship the UCRT and API-set DLLs, so don't bundle copies picked
+# up from unrelated SDK/JDK folders on PATH.
 system_dll = re.compile(r"^(?:api-ms-win-.*|ucrtbase)\.dll$", re.IGNORECASE)
 analysis.binaries = [entry for entry in analysis.binaries if not system_dll.fullmatch(entry[0])]
 

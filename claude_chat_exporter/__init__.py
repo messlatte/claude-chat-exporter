@@ -1,4 +1,4 @@
-"""Claude Chat Exporter — local, privacy-friendly conversation exports."""
+"""Claude Chat Exporter: local, privacy-friendly conversation exports."""
 
 from .core import (
     ConversationGraph,
