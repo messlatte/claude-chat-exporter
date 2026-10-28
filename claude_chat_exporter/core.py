@@ -5,18 +5,18 @@ from dataclasses import dataclass
 from datetime import datetime
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import re
 import tempfile
 import unicodedata
-from typing import Any, Iterable, Iterator, Literal, Sequence
+from typing import Any, Iterator, Sequence
 
 
-ExportFormat = Literal["chatgpt_markdown", "complete_markdown", "raw_json"]
 VALID_FORMATS: set[str] = {"chatgpt_markdown", "complete_markdown", "raw_json"}
 MAX_BRANCH_PATHS = 10_000
+# Rough average for the token estimates shown in the app.
+CHARS_PER_TOKEN = 3.8
 
 _INVALID_WINDOWS_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 _WHITESPACE = re.compile(r"\s+")
@@ -94,10 +94,6 @@ class ConversationStore:
             if active_filters.get("technical") and not summary["has_technical"]:
                 continue
             if active_filters.get("exclude_empty") and summary["is_empty"]:
-                continue
-            if active_filters.get("branches") and summary["branch_count"] < 2:
-                continue
-            if active_filters.get("large") and summary["char_count"] < 400_000:
                 continue
             selected.append(dict(summary))
 
@@ -253,6 +249,8 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
     if not messages:
         return ConversationGraph(paths=(), warnings=())
 
+    # Design chats have no parent links and are one linear path
+    # (test_design_chats_are_discovered_and_renderable).
     if all("parent_message_uuid" not in message for message in messages):
         children = tuple(
             (index + 1,) if index + 1 < len(messages) else ()
@@ -273,6 +271,9 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
         value = message.get("uuid")
         if isinstance(value, str) and value:
             positions[value].append(index)
+    # Duplicate message UUIDs, e.g. a message copied in a hand-edited export:
+    # a child links to the nearest earlier copy
+    # (test_duplicate_message_uuid_links_to_nearest_earlier_copy).
     duplicates = [uuid for uuid, indexes in positions.items() if len(indexes) > 1]
     if duplicates:
         warnings.append(
@@ -293,18 +294,31 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
         if previous:
             parents[index] = previous[-1]
         elif non_self:
+            # Parent stored after its child, as in a hand-edited or re-sorted
+            # export (test_forward_parent_reference_is_resolved_independent_of_array_order).
             parents[index] = non_self[0]
             forward_references += 1
         elif index in candidates:
+            # A message that names itself as parent in a hand-edited export;
+            # the cycle cut below makes it a root
+            # (test_self_parent_becomes_root_and_is_reported_as_cycle).
             parents[index] = index
         else:
+            # Parent missing from the file, as in a truncated export; the
+            # message becomes a root (test_all_root_to_leaf_variants_are_reconstructed).
             unresolved += 1
 
     if unresolved:
         warnings.append(f"{unresolved} Parent-Bezug/Bezüge zeigen auf keine vorhandene Nachricht und wurden als Wurzel behandelt.")
     if forward_references:
-        warnings.append(f"{forward_references} Parent-Bezug/Bezüge zeigen auf spätere Array-Einträge; sie wurden anhand der UUID rekonstruiert.")
+        warnings.append(
+            f"{forward_references} Parent-Bezug/Bezüge zeigen auf spätere Array-Einträge; sie wurden anhand der UUID rekonstruiert."
+        )
 
+    # Messages that are each other's ancestors, possible only in a hand-edited
+    # export: each cycle is cut at its last message in array order, without
+    # recursion (test_parent_cycle_is_cut_without_recursion). Afterwards every
+    # chain ends in a root, so roots is never empty below.
     completed: set[int] = set()
     cycle_count = 0
     for start in range(len(messages)):
@@ -334,6 +348,8 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
     roots = [index for index, parent in enumerate(parents) if parent is None]
     roots.sort(key=lambda root: (_date_key(_string(messages[root].get("created_at"))), root))
 
+    # One path per leaf. Above MAX_BRANCH_PATHS only the tree is kept
+    # (test_compact_markdown_keeps_tree_when_path_list_is_not_materialized).
     path_count = sum(1 for values in child_lists if not values)
     truncated = path_count > MAX_BRANCH_PATHS
     paths: list[tuple[int, ...]] = []
@@ -355,17 +371,8 @@ def conversation_graph(conversation: dict[str, Any]) -> ConversationGraph:
                     for child in reversed(node_children):
                         stack.append((child, current))
 
-    if not roots:
-        roots = list(range(len(messages)))
-        warnings.append("Der Parent-Graph konnte nicht rekonstruiert werden; die Originalreihenfolge wird verwendet.")
-    unique_paths: list[tuple[int, ...]] = []
-    seen_paths: set[tuple[int, ...]] = set()
-    for path_value in paths:
-        if path_value and path_value not in seen_paths:
-            seen_paths.add(path_value)
-            unique_paths.append(path_value)
     return ConversationGraph(
-        paths=tuple(unique_paths),
+        paths=tuple(paths),
         warnings=tuple(warnings),
         truncated=truncated,
         path_count=path_count,
@@ -416,7 +423,7 @@ def _build_summary(conversation: dict[str, Any], uuid: str) -> dict[str, Any]:
         "file_count": file_count,
         "branch_count": graph.path_count,
         "char_count": char_count,
-        "estimated_tokens": max(0, round(char_count / 3.8)),
+        "estimated_tokens": estimate_tokens(char_count),
         "has_technical": has_technical,
         "is_empty": len(messages) == 0,
     }
@@ -790,22 +797,17 @@ def _atomic_write_text(path: Path, content: str) -> None:
             temporary.write(content)
             temporary.flush()
             os.fsync(temporary.fileno())
-        if os.name == "nt":
-            # Windows rename is atomic within the directory and refuses to
-            # replace an existing destination. It also works on FAT/exFAT.
-            os.rename(temporary_name, path)
-            temporary_name = ""
-        else:
-            # Hard-linking is the portable no-replace commit on Unix/macOS.
-            # Both names refer to the already fsynced, complete file.
-            os.link(temporary_name, path)
+        # Windows rename is atomic within the directory and refuses to
+        # replace an existing destination. It also works on FAT/exFAT.
+        os.rename(temporary_name, path)
+        temporary_name = ""
     finally:
         if temporary_name:
             try:
                 os.unlink(temporary_name)
             except OSError:
-                # The export is already complete; a leftover hidden temp file
-                # must not turn it into a failure.
+                # Only reached after a failed write or rename; that error
+                # propagates, a leftover hidden temp file must not replace it.
                 pass
 
 
@@ -870,6 +872,10 @@ def _iter_technical_types(message: dict[str, Any]) -> Iterator[str]:
             yield _string(block.get("type")) or "unbekannt"
 
 
+def estimate_tokens(characters: int) -> int:
+    return max(0, round(characters / CHARS_PER_TOKEN))
+
+
 def technical_block_count(conversation: dict[str, Any]) -> int:
     return sum(1 for message in _messages(conversation) for _ in _iter_technical_types(message))
 
@@ -884,12 +890,10 @@ def _is_visible_text_block(value: Any) -> bool:
 
 
 def _messages(conversation: dict[str, Any]) -> list[dict[str, Any]]:
-    value = conversation.get("chat_messages")
-    if not isinstance(value, list):
-        value = conversation.get("messages")
-    if not isinstance(value, list):
-        return []
-    return [message for message in value if isinstance(message, dict)]
+    # _validate_conversations has checked that the list exists and holds dicts.
+    if "chat_messages" in conversation:
+        return conversation["chat_messages"]
+    return conversation["messages"]
 
 
 def _conversation_uuid(conversation: dict[str, Any], index: int) -> str:

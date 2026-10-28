@@ -5,22 +5,28 @@ from ctypes import wintypes
 import json
 import os
 from pathlib import Path
-import platform
-import shutil
-import subprocess
 import sys
 import threading
 import time
 from typing import Any
 
-from .core import ConversationStore, load_conversations, render_conversation, technical_block_count, write_exports
+from .core import (
+    VALID_FORMATS,
+    ConversationStore,
+    estimate_tokens,
+    load_conversations,
+    render_conversation,
+    technical_block_count,
+    write_exports,
+)
 from .ui import load_html
 
 
 APP_NAME = "Claude Chat Exporter"
 APP_FOLDER = "ClaudeChatExporter"
-FORMATS = {"chatgpt_markdown", "complete_markdown", "raw_json"}
 PREVIEW_LIMIT = 160_000
+# Above this size the app suggests uploading the export instead of pasting it.
+LARGE_CHAT_CHARS = 400_000
 SOURCE_FILE_TYPES = (
     "Claude JSON (*.json)",
     "JSON Dateien (*.json)",
@@ -35,13 +41,7 @@ def _resource_root() -> Path:
 
 
 def _settings_path() -> Path:
-    system = platform.system()
-    if system == "Windows":
-        root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-    elif system == "Darwin":
-        root = Path.home() / "Library" / "Application Support"
-    else:
-        root = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    root = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
     return root / APP_FOLDER / "settings.json"
 
 
@@ -168,7 +168,7 @@ class DesktopApi:
                 conversation = self._conversation(uuid)
                 text = render_conversation(conversation, selected_format)
                 total = len(text)
-                estimated_tokens = _estimate_tokens(total)
+                estimated_tokens = estimate_tokens(total)
                 self._size_cache[(uuid, selected_format)] = (total, estimated_tokens)
             truncated = total > PREVIEW_LIMIT
             preview = text[:PREVIEW_LIMIT]
@@ -209,7 +209,7 @@ class DesktopApi:
                     if size is None:
                         conversation = self._conversation(uuid)
                         characters = len(render_conversation(conversation, selected_format))
-                        size = (characters, _estimate_tokens(characters))
+                        size = (characters, estimate_tokens(characters))
                         self._size_cache[cache_key] = size
                     total_chars += size[0]
                     total_tokens += size[1]
@@ -268,7 +268,7 @@ class DesktopApi:
             return {
                 "ok": True,
                 "chars": len(text),
-                "estimated_tokens": _estimate_tokens(len(text)),
+                "estimated_tokens": estimate_tokens(len(text)),
                 "warnings": warnings,
             }
         except Exception as exc:
@@ -278,13 +278,7 @@ class DesktopApi:
     def reveal_export_folder(self) -> dict[str, Any]:
         try:
             folder = self._export_folder(create=True)
-            system = platform.system()
-            if system == "Windows":
-                os.startfile(str(folder))  # type: ignore[attr-defined]
-            elif system == "Darwin":
-                subprocess.Popen(["open", str(folder)])
-            else:
-                subprocess.Popen(["xdg-open", str(folder)])
+            os.startfile(str(folder))  # type: ignore[attr-defined]
             return {"ok": True}
         except Exception as exc:
             return self._error(_friendly_exception(exc))
@@ -404,18 +398,14 @@ class DesktopApi:
 
 
 def _valid_format(value: str) -> str:
-    if value not in FORMATS:
+    if value not in VALID_FORMATS:
         raise ValueError("Unbekanntes Exportformat.")
     return value
 
 
-def _estimate_tokens(characters: int) -> int:
-    return max(0, round(characters / 3.8))
-
-
 def _format_warnings(conversation: dict[str, Any], selected_format: str, characters: int) -> list[str]:
     warnings: list[str] = []
-    if characters > 400_000:
+    if characters > LARGE_CHAT_CHARS:
         warnings.append("Sehr großer Chat: Als Datei in ChatGPT hochladen statt über die Zwischenablage einfügen.")
     if selected_format == "complete_markdown":
         warnings.append("Enthält technische Blöcke, interne Prompts und möglicherweise sensible Tool-Daten.")
@@ -444,22 +434,11 @@ def _copy_to_clipboard(text: str) -> None:
         raise ValueError(
             "Dieser Chat enthält ein eingebettetes Nullzeichen. Nutze den Datei-Export, damit der Inhalt nicht abgeschnitten wird."
         )
-    system = platform.system()
-    if system == "Windows":
-        _copy_windows(text)
-        return
-    if system == "Darwin":
-        subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
-        return
-    command = shutil.which("wl-copy")
-    if command:
-        subprocess.run([command], input=text.encode("utf-8"), check=True)
-        return
-    command = shutil.which("xclip")
-    if command:
-        subprocess.run([command, "-selection", "clipboard"], input=text.encode("utf-8"), check=True)
-        return
-    raise RuntimeError("Keine unterstützte Zwischenablage gefunden.")
+    _copy_windows(text)
+
+
+GMEM_MOVEABLE = 0x0002
+CF_UNICODETEXT = 13
 
 
 def _copy_windows(text: str) -> None:
@@ -476,7 +455,7 @@ def _copy_windows(text: str) -> None:
     user32.SetClipboardData.restype = wintypes.HANDLE
 
     payload = text.encode("utf-16-le") + b"\x00\x00"
-    handle = kernel32.GlobalAlloc(0x0002, len(payload))
+    handle = kernel32.GlobalAlloc(GMEM_MOVEABLE, len(payload))
     if not handle:
         raise ctypes.WinError(ctypes.get_last_error())
     pointer = kernel32.GlobalLock(handle)
@@ -501,7 +480,7 @@ def _copy_windows(text: str) -> None:
     try:
         if not user32.EmptyClipboard():
             raise ctypes.WinError(ctypes.get_last_error())
-        if not user32.SetClipboardData(13, handle):
+        if not user32.SetClipboardData(CF_UNICODETEXT, handle):
             raise ctypes.WinError(ctypes.get_last_error())
         transferred = True
     finally:
@@ -537,8 +516,7 @@ def main() -> None:
         shadow=True,
     )
     api.bind_window(window)
-    gui = "edgechromium" if platform.system() == "Windows" else None
-    webview.start(gui=gui, debug=False, private_mode=True)
+    webview.start(gui="edgechromium", debug=False, private_mode=True)
 
 
 if __name__ == "__main__":

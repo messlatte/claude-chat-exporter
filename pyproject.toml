@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-chat-exporter"
+dynamic = ["version"]
+description = "Windows app that exports single chats from a Claude data export as Markdown or JSON"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.13"
+authors = [{ name = "Claude Chat Exporter contributors" }]
+dependencies = ["pywebview>=6.2.1"]
+classifiers = [
+    "Environment :: Win32 (MS Windows)",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Repository = "https://github.com/messlatte/claude-chat-exporter"
+
+[tool.setuptools]
+packages = ["claude_chat_exporter"]
+
+[tool.setuptools.package-data]
+claude_chat_exporter = ["web/*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "claude_chat_exporter.__version__" }
+
+[tool.ruff]
+line-length = 140
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["F", "E", "B"]
